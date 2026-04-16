@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Punjab Schools Enrollment Dashboard 2026-27</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',sans-serif}
+  body{background:#f3f4f6;min-height:100vh}
+  header{background:#4338ca;color:#fff;padding:16px 24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+  header h1{font-size:18px;font-weight:700}
+  header p{font-size:13px;color:#c7d2fe;margin-top:2px}
+  .filters{background:#fff;border-bottom:1px solid #e5e7eb;padding:12px 24px;display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+  .filter-group{display:flex;flex-direction:column;gap:4px}
+  .filter-group label{font-size:11px;color:#6b7280;font-weight:600;text-transform:uppercase}
+  select,input{border:1px solid #d1d5db;border-radius:8px;padding:7px 10px;font-size:13px;background:#fff;outline:none}
+  select:focus,input:focus{border-color:#6366f1;box-shadow:0 0 0 2px #e0e7ff}
+  .reset-btn{font-size:13px;color:#6366f1;background:none;border:none;cursor:pointer;padding:7px 0;text-decoration:underline}
+  .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;padding:20px 24px}
+  .kpi-card{background:#fff;border-radius:12px;border:1px solid #e5e7eb;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05)}
+  .kpi-label{font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px}
+  .kpi-value{font-size:26px;font-weight:600;color:#1f2937;margin-bottom:12px}
+  .sub-cards{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .sub-card{background:#f9fafb;border-radius:8px;padding:8px 10px;display:flex;align-items:center;gap:8px}
+  .sub-label{font-size:11px;color:#6b7280}
+  .sub-value{font-size:14px;font-weight:600;color:#1f2937}
+  .tabs{display:flex;gap:4px;padding:0 24px;border-bottom:1px solid #e5e7eb;background:#fff}
+  .tab{padding:12px 16px;font-size:13px;font-weight:500;border-bottom:2px solid transparent;color:#6b7280;cursor:pointer;background:none;border-top:none;border-left:none;border-right:none}
+  .tab.active{border-bottom-color:#6366f1;color:#6366f1}
+  .content{padding:20px 24px}
+  .card{background:#fff;border-radius:12px;border:1px solid #e5e7eb;padding:16px;margin-bottom:20px}
+  .card h2{font-size:15px;font-weight:600;color:#374151;margin-bottom:4px}
+  .card p{font-size:12px;color:#9ca3af;margin-bottom:12px}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  thead tr{background:#f9fafb}
+  th{padding:10px 12px;font-weight:600;color:#6b7280;text-transform:uppercase;font-size:10px;letter-spacing:0.05em;border-bottom:1px solid #e5e7eb;white-space:nowrap}
+  td{padding:10px 12px;border-bottom:1px solid #f3f4f6;color:#374151}
+  tr:hover td{background:#f9fafb}
+  .text-right{text-align:right}
+  .text-center{text-align:center}
+  .font-bold{font-weight:700}
+  .text-indigo{color:#6366f1;font-weight:600}
+  .badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600}
+  .badge-green{background:#dcfce7;color:#166534}
+  .badge-yellow{background:#fef9c3;color:#854d0e}
+  .badge-red{background:#fee2e2;color:#991b1b}
+  .progress-bar-wrap{background:#e5e7eb;border-radius:999px;height:10px;width:100%;min-width:80px}
+  .progress-bar{height:10px;border-radius:999px;transition:width 0.3s}
+  .loading{display:flex;flex-direction:column;align-items:center;justify-content:center;height:60vh;color:#6b7280;gap:12px}
+  .spinner{width:40px;height:40px;border:4px solid #e5e7eb;border-top-color:#6366f1;border-radius:50%;animation:spin 0.8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .error{background:#fee2e2;color:#991b1b;padding:16px;border-radius:8px;margin:20px 24px}
+  .boys-card{border-left:3px solid #3b82f6}
+  .girls-card{border-left:3px solid #ec4899}
+  .gender-section{margin-bottom:20px}
+  .gender-header-blue{background:#eff6ff;color:#1d4ed8}
+  .gender-header-pink{background:#fdf2f8;color:#be185d}
+  .rank-col{color:#9ca3af;font-weight:500}
+  #loading-screen{position:fixed;inset:0;background:#f3f4f6;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:16px}
+  #loading-screen h2{font-size:18px;font-weight:600;color:#374151}
+  #loading-screen p{font-size:13px;color:#6b7280}
+</style>
+</head>
+<body>
+
+<div id="loading-screen">
+  <div class="spinner"></div>
+  <h2>Loading Dashboard...</h2>
+  <p>Fetching enrollment data from Google Sheets</p>
+</div>
+
+<div id="app" style="display:none">
+  <header>
+    <div>
+      <h1>🏫 Punjab Schools Enrollment Dashboard</h1>
+      <p>Academic Year 2026–27 · Progress as of <span id="progress-date">13 Apr 2026</span></p>
+    </div>
+  </header>
+
+  <div class="filters">
+    <div class="filter-group"><label>District</label><select id="f-district"><option>All</option></select></div>
+    <div class="filter-group"><label>Tehsil</label><select id="f-tehsil"><option>All</option></select></div>
+    <div class="filter-group"><label>School Level</label><select id="f-level"><option>All</option></select></div>
+    <div class="filter-group"><label>School Type</label><select id="f-type"><option>All</option></select></div>
+    <div class="filter-group"><label>Area</label><select id="f-area"><option>All</option><option>Urban</option><option>Rural</option></select></div>
+    <div class="filter-group"><label>Search School</label><input id="f-search" placeholder="Name or EMIS code..." style="width:180px"/></div>
+    <button class="reset-btn" onclick="resetFilters()">Reset Filters</button>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-label">Total Baseline</div>
+      <div class="kpi-value" id="k-baseT">—</div>
+      <div class="sub-cards">
+        <div class="sub-card boys-card">
+          <svg width="22" height="28" viewBox="0 0 28 36" fill="none"><circle cx="14" cy="7" r="6" fill="#3b82f6"/><rect x="8" y="15" width="12" height="13" rx="3" fill="#3b82f6"/><rect x="8" y="26" width="5" height="10" rx="2" fill="#3b82f6"/><rect x="15" y="26" width="5" height="10" rx="2" fill="#3b82f6"/></svg>
+          <div><div class="sub-label">Baseline Boys</div><div class="sub-value" id="k-baseB">—</div></div>
+        </div>
+        <div class="sub-card girls-card">
+          <svg width="22" height="28" viewBox="0 0 28 36" fill="none"><circle cx="14" cy="7" r="6" fill="#ec4899"/><path d="M5 18 Q5 14 14 14 Q23 14 23 18 L20 28 H8 Z" fill="#ec4899"/><rect x="8" y="26" width="5" height="10" rx="2" fill="#ec4899"/><rect x="15" y="26" width="5" height="10" rx="2" fill="#ec4899"/></svg>
+          <div><div class="sub-label">Baseline Girls</div><div class="sub-value" id="k-baseG">—</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Total New Enrolment Target</div>
+      <div class="kpi-value" id="k-tgtT">—</div>
+      <div class="sub-cards">
+        <div class="sub-card boys-card">
+          <svg width="22" height="28" viewBox="0 0 28 36" fill="none"><circle cx="14" cy="7" r="6" fill="#3b82f6"/><rect x="8" y="15" width="12" height="13" rx="3" fill="#3b82f6"/><rect x="8" y="26" width="5" height="10" rx="2" fill="#3b82f6"/><rect x="15" y="26" width="5" height="10" rx="2" fill="#3b82f6"/></svg>
+          <div><div class="sub-label">Target Boys</div><div class="sub-value" id="k-tgtB">—</div></div>
+        </div>
+        <div class="sub-card girls-card">
+          <svg width="22" height="28" viewBox="0 0 28 36" fill="none"><circle cx="14" cy="7" r="6" fill="#ec4899"/><path d="M5 18 Q5 14 14 14 Q23 14 23 18 L20 28 H8 Z" fill="#ec4899"/><rect x="8" y="26" width="5" height="10" rx="2" fill="#ec4899"/><rect x="15" y="26" width="5" height="10" rx="2" fill="#ec4899"/></svg>
+          <div><div class="sub-label">Target Girls</div><div class="sub-value" id="k-tgtG">—</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Total Current Enrolment</div>
+      <div class="kpi-value" id="k-enrT">—</div>
+      <div class="sub-cards">
+        <div class="sub-card boys-card">
+          <svg width="22" height="28" viewBox="0 0 28 36" fill="none"><circle cx="14" cy="7" r="6" fill="#3b82f6"/><rect x="8" y="15" width="12" height="13" rx="3" fill="#3b82f6"/><rect x="8" y="26" width="5" height="10" rx="2" fill="#3b82f6"/><rect x="15" y="26" width="5" height="10" rx="2" fill="#3b82f6"/></svg>
+          <div><div class="sub-label">Current Boys</div><div class="sub-value" id="k-enrB">—</div></div>
+        </div>
+        <div class="sub-card girls-card">
+          <svg width="22" height="28" viewBox="0 0 28 36" fill="none"><circle cx="14" cy="7" r="6" fill="#ec4899"/><path d="M5 18 Q5 14 14 14 Q23 14 23 18 L20 28 H8 Z" fill="#ec4899"/><rect x="8" y="26" width="5" height="10" rx="2" fill="#ec4899"/><rect x="15" y="26" width="5" height="10" rx="2" fill="#ec4899"/></svg>
+          <div><div class="sub-label">Current Girls</div><div class="sub-value" id="k-enrG">—</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Expected Enrolment</div>
+      <div class="kpi-value" id="k-expT">—</div>
+      <div class="sub-cards">
+        <div class="sub-card boys-card">
+          <svg width="22" height="28" viewBox="0 0 28 36" fill="none"><circle cx="14" cy="7" r="6" fill="#3b82f6"/><rect x="8" y="15" width="12" height="13" rx="3" fill="#3b82f6"/><rect x="8" y="26" width="5" height="10" rx="2" fill="#3b82f6"/><rect x="15" y="26" width="5" height="10" rx="2" fill="#3b82f6"/></svg>
+          <div><div class="sub-label">Expected Boys</div><div class="sub-value" id="k-expB">—</div></div>
+        </div>
+        <div class="sub-card girls-card">
+          <svg width="22" height="28" viewBox="0 0 28 36" fill="none"><circle cx="14" cy="7" r="6" fill="#ec4899"/><path d="M5 18 Q5 14 14 14 Q23 14 23 18 L20 28 H8 Z" fill="#ec4899"/><rect x="8" y="26" width="5" height="10" rx="2" fill="#ec4899"/><rect x="15" y="26" width="5" height="10" rx="2" fill="#ec4899"/></svg>
+          <div><div class="sub-label">Expected Girls</div><div class="sub-value" id="k-expG">—</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('overview',this)">📊 District Overview</button>
+    <button class="tab" onclick="switchTab('tehsil',this)">🗺️ Tehsil Breakdown</button>
+    <button class="tab" onclick="switchTab('gender',this)">👥 Gender Analysis</button>
+    <button class="tab" onclick="switchTab('schools',this)">🏫 School Table</button>
+  </div>
+
+  <div class="content">
+    <div id="tab-overview">
+      <div class="card">
+        <h2>District-wise Performance — Ranked by % New Target Achieved</h2>
+        <p>Formula: (Current Enrolled − Baseline) ÷ New Enrolment Target × 100</p>
+        <div style="overflow-x:auto"><table id="district-table">
+          <thead><tr>
+            <th class="rank-col">#</th>
+            <th>District</th>
+            <th class="text-right">Baseline</th>
+            <th class="text-right">New Enrolment Target</th>
+            <th class="text-right">Expected Enrolment</th>
+            <th class="text-right">Current Enrolled</th>
+            <th class="text-right">% New Target Achieved</th>
+            <th style="width:120px">Progress</th>
+            <th class="text-center">Status</th>
+          </tr></thead>
+          <tbody id="district-body"></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <div id="tab-tehsil" style="display:none">
+      <div class="card">
+        <h2>Tehsil-wise Performance — Ranked by % New Target Achieved</h2>
+        <p>Use the District filter to narrow down tehsils.</p>
+        <div style="overflow-x:auto"><table id="tehsil-table">
+          <thead><tr>
+            <th class="rank-col">#</th>
+            <th>District</th>
+            <th>Tehsil</th>
+            <th class="text-right">Baseline</th>
+            <th class="text-right">New Enrolment Target</th>
+            <th class="text-right">Expected Enrolment</th>
+            <th class="text-right">Current Enrolled</th>
+            <th class="text-right">% New Target Achieved</th>
+            <th style="width:120px">Progress</th>
+            <th class="text-center">Status</th>
+          </tr></thead>
+          <tbody id="tehsil-body"></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <div id="tab-gender" style="display:none">
+      <div class="card gender-section">
+        <h2 style="color:#1d4ed8">👦 Boys — District-wise Performance</h2>
+        <p>Formula: (Current Boys − Baseline Boys) ÷ New Target Boys × 100</p>
+        <div style="overflow-x:auto"><table>
+          <thead><tr class="gender-header-blue">
+            <th>#</th><th>District</th>
+            <th class="text-right">Baseline (B)</th>
+            <th class="text-right">New Target (B)</th>
+            <th class="text-right">Expected (B)</th>
+            <th class="text-right">Current Enrolled (B)</th>
+            <th class="text-right">% Target Achieved</th>
+            <th style="width:120px">Progress</th>
+            <th class="text-center">Status</th>
+          </tr></thead>
+          <tbody id="boys-body"></tbody>
+        </table></div>
+      </div>
+      <div class="card gender-section">
+        <h2 style="color:#be185d">👧 Girls — District-wise Performance</h2>
+        <p>Formula: (Current Girls − Baseline Girls) ÷ New Target Girls × 100</p>
+        <div style="overflow-x:auto"><table>
+          <thead><tr class="gender-header-pink">
+            <th>#</th><th>District</th>
+            <th class="text-right">Baseline (G)</th>
+            <th class="text-right">New Target (G)</th>
+            <th class="text-right">Expected (G)</th>
+            <th class="text-right">Current Enrolled (G)</th>
+            <th class="text-right">% Target Achieved</th>
+            <th style="width:120px">Progress</th>
+            <th class="text-center">Status</th>
+          </tr></thead>
+          <tbody id="girls-body"></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <div id="tab-schools" style="display:none">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <h2>School-level Detail</h2>
+          <span id="school-count" style="font-size:12px;color:#9ca3af"></span>
+        </div>
+        <div style="overflow-x:auto"><table>
+          <thead><tr>
+            <th>EMIS</th><th>School</th><th>District</th><th>Tehsil</th>
+            <th>Level</th><th>Type</th><th>Area</th>
+            <th class="text-right">Baseline</th>
+            <th class="text-right">New Target</th>
+            <th class="text-right">Expected</th>
+            <th class="text-right">Enrolled (B)</th>
+            <th class="text-right">Enrolled (G)</th>
+            <th class="text-right">Total Enrolled</th>
+            <th class="text-right">% New Target</th>
+            <th class="text-center">Status</th>
+          </tr></thead>
+          <tbody id="school-body"></tbody>
+        </table></div>
+        <p id="school-note" style="font-size:11px;color:#9ca3af;margin-top:8px;text-align:center"></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SHEET_ID = '1VcYEM8OdM8s3h5ZKKsGl-V5AVI9z18bRoj15lYF0oTQ';
+const BASE_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=`;
+
+let allData = [];
+
+const fmt = n => isNaN(+n) ? 0 : +n || 0;
+const num = n => Math.round(n).toLocaleString();
+const pct = (a, b) => b > 0 ? ((a / b) * 100) : 0;
+const barColor = p => p >= 90 ? '#10b981' : p >= 70 ? '#f59e0b' : '#ef4444';
+const badge = p => p >= 90
+  ? '<span class="badge badge-green">On Track</span>'
+  : p >= 70
+  ? '<span class="badge badge-yellow">At Risk</span>'
+  : '<span class="badge badge-red">Behind</span>';
+const progressBar = p => {
+  const w = Math.min(Math.max(p,0),100).toFixed(1);
+  return `<div class="progress-bar-wrap"><div class="progress-bar" style="width:${w}%;background:${barColor(p)}"></div></div>`;
+};
+
+async function fetchCSV(sheet) {
+  const res = await fetch(BASE_URL + encodeURIComponent(sheet));
+  const text = await res.text();
+  return new Promise(resolve => {
+    Papa.parse(text, { header: true, skipEmptyLines: true, dynamicTyping: true, complete: r => resolve(r.data) });
+  });
+}
+
+async function init() {
+  try {
+    const [baseline, progress] = await Promise.all([fetchCSV('baseline'), fetchCSV('current')]);
+    const progMap = {};
+    progress.forEach(r => { if (r.s_emis_code) progMap[r.s_emis_code] = r; });
+
+    allData = baseline.map(b => {
+      const p = progMap[b.s_emis_code] || {};
+      const baseB = fmt(b['Baseline Boys']), baseG = fmt(b['Baseline Girls']), baseT = fmt(b['Total Baseline']);
+      const tgtB = fmt(b['New Enrolment Target (Boys)']), tgtG = fmt(b['New Enrolment Target (Girls)']);
+      const tgtT = tgtB + tgtG;
+      const enrB = fmt(p.total_b), enrG = fmt(p.total_g);
+      const enrT = fmt(p.total_t) || enrB + enrG;
+      return {
+        d_name: b.d_name || '', t_name: b.t_name || '', m_name: b.m_name || '',
+        s_emis_code: b.s_emis_code, s_name: b.s_name || '',
+        s_level: b.s_level || '', s_type: b.s_type || '', s_area: b.s_area || '',
+        baseB, baseG, baseT, tgtB, tgtG, tgtT, enrB, enrG, enrT
+      };
+    });
+
+    populateFilters();
+    document.getElementById('loading-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    render();
+  } catch(e) {
+    document.getElementById('loading-screen').innerHTML = `<div style="color:#991b1b;text-align:center;padding:24px"><h2>Failed to load data</h2><p style="margin-top:8px">Please make sure the Google Sheet is shared publicly.<br>${e.message}</p></div>`;
+  }
+}
+
+function populateFilters() {
+  const unique = (k) => ['All', ...Array.from(new Set(allData.map(r => r[k]))).filter(Boolean).sort()];
+  const fill = (id, opts) => {
+    const el = document.getElementById(id);
+    opts.forEach(o => { const opt = document.createElement('option'); opt.value = o; opt.textContent = o; el.appendChild(opt); });
+    el.addEventListener('change', () => { if(id==='f-district') resetTehsil(); render(); });
+  };
+  fill('f-district', unique('d_name').slice(1));
+  fill('f-tehsil', unique('t_name').slice(1));
+  fill('f-level', unique('s_level').slice(1));
+  fill('f-type', unique('s_type').slice(1));
+  document.getElementById('f-area').addEventListener('change', render);
+  document.getElementById('f-search').addEventListener('input', render);
+}
+
+function resetTehsil() {
+  const el = document.getElementById('f-tehsil');
+  el.innerHTML = '<option>All</option>';
+  const dist = document.getElementById('f-district').value;
+  const opts = dist === 'All'
+    ? [...new Set(allData.map(r => r.t_name))].filter(Boolean).sort()
+    : [...new Set(allData.filter(r => r.d_name === dist).map(r => r.t_name))].filter(Boolean).sort();
+  opts.forEach(o => { const opt = document.createElement('option'); opt.value = o; opt.textContent = o; el.appendChild(opt); });
+}
+
+function getFiltered() {
+  const d = document.getElementById('f-district').value;
+  const t = document.getElementById('f-tehsil').value;
+  const l = document.getElementById('f-level').value;
+  const ty = document.getElementById('f-type').value;
+  const a = document.getElementById('f-area').value;
+  const s = document.getElementById('f-search').value.toLowerCase();
+  return allData.filter(r =>
+    (d === 'All' || r.d_name === d) &&
+    (t === 'All' || r.t_name === t) &&
+    (l === 'All' || r.s_level === l) &&
+    (ty === 'All' || r.s_type === ty) &&
+    (a === 'All' || r.s_area === a) &&
+    (!s || r.s_name?.toLowerCase().includes(s) || String(r.s_emis_code).includes(s))
+  );
+}
+
+function aggregate(data, key) {
+  const map = {};
+  data.forEach(r => {
+    const k = typeof key === 'function' ? key(r) : r[key];
+    if (!k) return;
+    if (!map[k]) map[k] = { name: k, district: r.d_name, baseB:0, baseG:0, baseT:0, tgtB:0, tgtG:0, tgtT:0, enrB:0, enrG:0, enrT:0 };
+    map[k].baseB += r.baseB; map[k].baseG += r.baseG; map[k].baseT += r.baseT;
+    map[k].tgtB += r.tgtB; map[k].tgtG += r.tgtG; map[k].tgtT += r.tgtT;
+    map[k].enrB += r.enrB; map[k].enrG += r.enrG; map[k].enrT += r.enrT;
+  });
+  return Object.values(map).map(r => ({
+    ...r,
+    expT: r.baseT + r.tgtT, expB: r.baseB + r.tgtB, expG: r.baseG + r.tgtG,
+    pct: pct(r.enrT - r.baseT, r.tgtT),
+    pctB: pct(r.enrB - r.baseB, r.tgtB),
+    pctG: pct(r.enrG - r.baseG, r.tgtG),
+  })).sort((a,b) => b.pct - a.pct);
+}
+
+function renderDistrictTable(data) {
+  document.getElementById('district-body').innerHTML = data.map((r,i) => `
+    <tr>
+      <td class="rank-col">${i+1}</td>
+      <td class="font-bold">${r.name}</td>
+      <td class="text-right">${num(r.baseT)}</td>
+      <td class="text-right">${num(r.tgtT)}</td>
+      <td class="text-right text-indigo">${num(r.expT)}</td>
+      <td class="text-right font-bold">${num(r.enrT)}</td>
+      <td class="text-right font-bold" style="color:${barColor(r.pct)}">${r.pct.toFixed(1)}%</td>
+      <td>${progressBar(r.pct)}</td>
+      <td class="text-center">${badge(r.pct)}</td>
+    </tr>`).join('');
+}
+
+function renderTehsilTable(data) {
+  document.getElementById('tehsil-body').innerHTML = data.map((r,i) => `
+    <tr>
+      <td class="rank-col">${i+1}</td>
+      <td class="font-bold">${r.district}</td>
+      <td>${r.name}</td>
+      <td class="text-right">${num(r.baseT)}</td>
+      <td class="text-right">${num(r.tgtT)}</td>
+      <td class="text-right text-indigo">${num(r.expT)}</td>
+      <td class="text-right font-bold">${num(r.enrT)}</td>
+      <td class="text-right font-bold" style="color:${barColor(r.pct)}">${r.pct.toFixed(1)}%</td>
+      <td>${progressBar(r.pct)}</td>
+      <td class="text-center">${badge(r.pct)}</td>
+    </tr>`).join('');
+}
+
+function renderGenderTable(data, gender) {
+  const isBoy = gender === 'boys';
+  const bodyId = isBoy ? 'boys-body' : 'girls-body';
+  document.getElementById(bodyId).innerHTML = [...data]
+    .sort((a,b) => (isBoy ? b.pctB - a.pctB : b.pctG - a.pctG))
+    .map((r,i) => {
+      const base = isBoy ? r.baseB : r.baseG;
+      const tgt = isBoy ? r.tgtB : r.tgtG;
+      const exp = isBoy ? r.expB : r.expG;
+      const enr = isBoy ? r.enrB : r.enrG;
+      const p = isBoy ? r.pctB : r.pctG;
+      return `<tr>
+        <td class="rank-col">${i+1}</td>
+        <td class="font-bold">${r.name}</td>
+        <td class="text-right">${num(base)}</td>
+        <td class="text-right">${num(tgt)}</td>
+        <td class="text-right" style="color:${isBoy?'#3b82f6':'#ec4899'};font-weight:600">${num(exp)}</td>
+        <td class="text-right font-bold">${num(enr)}</td>
+        <td class="text-right font-bold" style="color:${barColor(p)}">${p.toFixed(1)}%</td>
+        <td>${progressBar(p)}</td>
+        <td class="text-center">${badge(p)}</td>
+      </tr>`;
+    }).join('');
+}
+
+function renderSchoolTable(filtered) {
+  const rows = filtered.slice(0, 300);
+  document.getElementById('school-count').textContent = `${filtered.length.toLocaleString()} schools`;
+  document.getElementById('school-note').textContent = filtered.length > 300 ? `Showing first 300 of ${filtered.length.toLocaleString()} schools. Use filters to narrow down.` : '';
+  document.getElementById('school-body').innerHTML = rows.map(r => {
+    const p = pct(r.enrT - r.baseT, r.tgtT);
+    return `<tr>
+      <td>${r.s_emis_code}</td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.s_name}</td>
+      <td>${r.d_name}</td><td>${r.t_name}</td>
+      <td>${r.s_level}</td><td>${r.s_type}</td><td>${r.s_area}</td>
+      <td class="text-right">${num(r.baseT)}</td>
+      <td class="text-right">${num(r.tgtT)}</td>
+      <td class="text-right text-indigo">${num(r.baseT+r.tgtT)}</td>
+      <td class="text-right">${num(r.enrB)}</td>
+      <td class="text-right">${num(r.enrG)}</td>
+      <td class="text-right font-bold">${num(r.enrT)}</td>
+      <td class="text-right font-bold" style="color:${barColor(p)}">${p.toFixed(1)}%</td>
+      <td class="text-center">${badge(p)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function updateKPIs(filtered) {
+  const s = (k) => filtered.reduce((a,r) => a + (r[k]||0), 0);
+  const bT=s('baseT'),bB=s('baseB'),bG=s('baseG');
+  const tT=s('tgtT'),tB=s('tgtB'),tG=s('tgtG');
+  const eT=s('enrT'),eB=s('enrB'),eG=s('enrG');
+  document.getElementById('k-baseT').textContent = num(bT);
+  document.getElementById('k-baseB').textContent = num(bB);
+  document.getElementById('k-baseG').textContent = num(bG);
+  document.getElementById('k-tgtT').textContent = num(tT);
+  document.getElementById('k-tgtB').textContent = num(tB);
+  document.getElementById('k-tgtG').textContent = num(tG);
+  document.getElementById('k-enrT').textContent = num(eT);
+  document.getElementById('k-enrB').textContent = num(eB);
+  document.getElementById('k-enrG').textContent = num(eG);
+  document.getElementById('k-expT').textContent = num(bT+tT);
+  document.getElementById('k-expB').textContent = num(bB+tB);
+  document.getElementById('k-expG').textContent = num(bG+tG);
+}
+
+function render() {
+  const filtered = getFiltered();
+  updateKPIs(filtered);
+  const distData = aggregate(filtered, 'd_name');
+  const tehData = aggregate(filtered, 't_name');
+  renderDistrictTable(distData);
+  renderTehsilTable(tehData);
+  renderGenderTable(distData, 'boys');
+  renderGenderTable(distData, 'girls');
+  renderSchoolTable(filtered);
+}
+
+function switchTab(tab, btn) {
+  ['overview','tehsil','gender','schools'].forEach(t => {
+    document.getElementById('tab-'+t).style.display = t===tab ? 'block' : 'none';
+  });
+  document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function resetFilters() {
+  ['f-district','f-tehsil','f-level','f-type','f-area'].forEach(id => document.getElementById(id).selectedIndex=0);
+  document.getElementById('f-search').value = '';
+  render();
+}
+
+init();
+</script>
+</body>
+</html>
