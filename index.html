@@ -133,12 +133,19 @@ function parseCSV(text, skipRows=0) {
   return new Promise(resolve => {
     const lines = text.split('\n');
     const firstLine = lines[0] || '';
-    // Skip metadata rows, use the next line as header
-    const dataLines = lines.slice(skipRows);
-    Papa.parse(dataLines.join('\n'), {
-      header: true, skipEmptyLines: true, dynamicTyping: false,
-      complete: r => resolve({ data: r.data, firstLine })
-    });
+    if (skipRows > 0) {
+      // For SIS data: skip metadata rows, row at skipRows index is the header
+      const dataLines = lines.filter((l,i) => i >= skipRows && l.trim() !== '');
+      Papa.parse(dataLines.join('\n'), {
+        header: true, skipEmptyLines: true, dynamicTyping: false,
+        complete: r => resolve({ data: r.data, firstLine })
+      });
+    } else {
+      Papa.parse(text, {
+        header: true, skipEmptyLines: true, dynamicTyping: false,
+        complete: r => resolve({ data: r.data, firstLine })
+      });
+    }
   });
 }
 
