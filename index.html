@@ -168,6 +168,13 @@ async function init() {
       if (emis) sisMap[emis] = r;
     });
 
+    // Diagnostics
+    const sisKeys = Object.keys(sisMap);
+    console.log('SIS total rows:', curResult.data.length);
+    console.log('SIS sample headers:', Object.keys(curResult.data[0] || {}));
+    console.log('SIS first 3 EMIS:', sisKeys.slice(0,3));
+    console.log('Baseline first 3 EMIS:', baseResult.data.slice(0,3).map(b => String(b.s_emis_code||'').trim()));
+
     allData = baseResult.data.map(b => {
       const emis  = String(b.s_emis_code || '').trim().replace(/\.0$/, '');
       const s     = sisMap[emis] || {};
