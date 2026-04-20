@@ -132,10 +132,12 @@ const bar = p => { const w=Math.min(Math.max(p,0),100).toFixed(1); return `<div 
 function parseCSV(text, skipRows=0) {
   return new Promise(resolve => {
     const lines = text.split('\n');
-    const dataText = lines.slice(skipRows).join('\n');
-    Papa.parse(dataText, {
-      header: true, skipEmptyLines: true, dynamicTyping: true,
-      complete: r => resolve({ data: r.data, firstLine: lines[0] || '' })
+    const firstLine = lines[0] || '';
+    // Skip metadata rows, use the next line as header
+    const dataLines = lines.slice(skipRows);
+    Papa.parse(dataLines.join('\n'), {
+      header: true, skipEmptyLines: true, dynamicTyping: false,
+      complete: r => resolve({ data: r.data, firstLine })
     });
   });
 }
@@ -152,6 +154,8 @@ async function init() {
 
     const baseResult = await parseCSV(baseText, 0);
     const curResult  = await parseCSV(curText, 2);
+    // Debug: log first few rows to verify headers
+    // console.log(curResult.data[0]);
 
     // Extract date from SIS metadata row
     const dateMatch = curResult.firstLine.match(/\((.+?)\)/);
