@@ -160,9 +160,7 @@ async function init() {
     document.getElementById('ls-msg').textContent = 'Processing data...';
 
     const baseResult = await parseCSV(baseText, 0);
-    const curResult  = await parseCSV(curText, 2);
-    // Debug: log first few rows to verify headers
-    // console.log(curResult.data[0]);
+    const curResult  = await parseCSV(curText, 0);
 
     // Extract date from SIS metadata row
     const dateMatch = curResult.firstLine.match(/\((.+?)\)/);
