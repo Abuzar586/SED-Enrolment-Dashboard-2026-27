@@ -17,10 +17,10 @@ header p{font-size:13px;color:#c7d2fe;margin-top:2px}
 select,input{border:1px solid #d1d5db;border-radius:8px;padding:7px 10px;font-size:13px;background:#fff;outline:none}
 select:focus,input:focus{border-color:#6366f1;box-shadow:0 0 0 2px #e0e7ff}
 .reset-btn{font-size:13px;color:#6366f1;background:none;border:none;cursor:pointer;padding:7px 0;text-decoration:underline}
-.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;padding:20px 24px}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;padding:20px 24px}
 .kpi-card{background:#fff;border-radius:12px;border:1px solid #e5e7eb;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05)}
 .kpi-label{font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px}
-.kpi-value{font-size:28px;font-weight:600;color:#1f2937}
+.kpi-value{font-size:26px;font-weight:600;color:#1f2937}
 .kpi-sub{font-size:12px;color:#9ca3af;margin-top:4px}
 .tabs{display:flex;gap:4px;padding:0 24px;border-bottom:1px solid #e5e7eb;background:#fff;overflow-x:auto}
 .tab{padding:12px 16px;font-size:13px;font-weight:500;border-bottom:2px solid transparent;color:#6b7280;cursor:pointer;background:none;border-top:none;border-left:none;border-right:none;white-space:nowrap}
@@ -45,6 +45,7 @@ tr:hover td{background:#f9fafb}
 #ls p{font-size:13px;color:#6b7280}
 .spin{width:40px;height:40px;border:4px solid #e5e7eb;border-top-color:#6366f1;border-radius:50%;animation:spin 0.8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
+.last-updated{font-size:11px;color:#9ca3af;padding:8px 24px;background:#fff;border-bottom:1px solid #f3f4f6}
 </style>
 </head>
 <body>
@@ -52,7 +53,7 @@ tr:hover td{background:#f9fafb}
 <div id="ls">
   <div class="spin"></div>
   <h2>Loading Dashboard...</h2>
-  <p>Fetching enrollment data...</p>
+  <p id="ls-msg">Fetching enrollment data...</p>
 </div>
 
 <div id="app" style="display:none">
@@ -62,6 +63,8 @@ tr:hover td{background:#f9fafb}
       <p>Academic Year 2026–27 · Data as of <span id="sis-date">—</span></p>
     </div>
   </header>
+
+  <div class="last-updated">Last updated: <span id="last-updated">—</span></div>
 
   <div class="filters">
     <div class="filter-group"><label>District</label><select id="f-district"><option>All</option></select></div>
@@ -75,31 +78,11 @@ tr:hover td{background:#f9fafb}
   </div>
 
   <div class="kpi-grid">
-    <div class="kpi-card">
-      <div class="kpi-label">Total Baseline</div>
-      <div class="kpi-value" id="k-baseT">—</div>
-      <div class="kpi-sub">Starting enrollment</div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-label">New Enrolment Target</div>
-      <div class="kpi-value" id="k-tgtT">—</div>
-      <div class="kpi-sub">Additional students to enrol</div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-label">Expected Enrolment</div>
-      <div class="kpi-value" id="k-expT">—</div>
-      <div class="kpi-sub">Baseline + New Target</div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-label">Current Enrolment</div>
-      <div class="kpi-value" id="k-enrT">—</div>
-      <div class="kpi-sub">As per latest SIS data</div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-label">% New Target Achieved</div>
-      <div class="kpi-value" id="k-pct">—</div>
-      <div class="kpi-sub">(Current − Baseline) ÷ Target</div>
-    </div>
+    <div class="kpi-card"><div class="kpi-label">Total Baseline</div><div class="kpi-value" id="k-baseT">—</div><div class="kpi-sub">Starting enrollment</div></div>
+    <div class="kpi-card"><div class="kpi-label">New Enrolment Target</div><div class="kpi-value" id="k-tgtT">—</div><div class="kpi-sub">Additional students to enrol</div></div>
+    <div class="kpi-card"><div class="kpi-label">Expected Enrolment</div><div class="kpi-value" id="k-expT">—</div><div class="kpi-sub">Baseline + New Target</div></div>
+    <div class="kpi-card"><div class="kpi-label">Current Enrolment</div><div class="kpi-value" id="k-enrT">—</div><div class="kpi-sub">As per latest SIS data</div></div>
+    <div class="kpi-card"><div class="kpi-label">% New Target Achieved</div><div class="kpi-value" id="k-pct">—</div><div class="kpi-sub">(Current − Baseline) ÷ Target</div></div>
   </div>
 
   <div class="tabs">
@@ -133,119 +116,115 @@ tr:hover td{background:#f9fafb}
 </div>
 
 <script>
-const SHEET_ID = '1VcYEM8OdM8s3h5ZKKsGl-V5AVI9z18bRoj15lYF0oTQ';
-const BASELINE_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=baseline`;
-const SIS_URL = 'https://sis.pesrp.edu.pk/dashboard/download_schools_progress_stats';
+const REPO = 'abuzar586/SED-Enrolment-Dashboard-2026-27';
+const BASELINE_URL = `https://raw.githubusercontent.com/${REPO}/main/data/baseline.csv`;
+const CURRENT_URL  = `https://raw.githubusercontent.com/${REPO}/main/data/current.csv`;
+const META_URL     = `https://raw.githubusercontent.com/${REPO}/main/data/last_updated.txt`;
 
 let allData = [];
 
-const n = v => isNaN(+v) ? 0 : +v || 0;
+const n   = v => isNaN(+v) ? 0 : +v || 0;
 const fmt = v => Math.round(v).toLocaleString();
 const pct = (a,b) => b > 0 ? (a/b)*100 : 0;
-const bc = p => p >= 90 ? '#10b981' : p >= 70 ? '#f59e0b' : '#ef4444';
+const bc  = p => p >= 90 ? '#10b981' : p >= 70 ? '#f59e0b' : '#ef4444';
 const bdg = p => `<span class="badge ${p>=90?'bg':p>=70?'by':'br'}">${p>=90?'On Track':p>=70?'At Risk':'Behind'}</span>`;
 const bar = p => { const w=Math.min(Math.max(p,0),100).toFixed(1); return `<div class="pb"><div class="pf" style="width:${w}%;background:${bc(p)}"></div></div>`; };
 
-async function fetchCSV(url, skipRows=0) {
-  const res = await fetch(url);
-  const text = await res.text();
+function parseCSV(text, skipRows=0) {
   return new Promise(resolve => {
-    Papa.parse(text, {
-      header: false, skipEmptyLines: true,
-      complete: r => {
-        const rows = r.data.slice(skipRows);
-        const headers = rows[0];
-        const data = rows.slice(1).map(row => {
-          const obj = {};
-          headers.forEach((h,i) => obj[h?.trim()] = row[i]);
-          return obj;
-        });
-        resolve({ data, raw: r.data });
-      }
+    const lines = text.split('\n');
+    const dataText = lines.slice(skipRows).join('\n');
+    Papa.parse(dataText, {
+      header: true, skipEmptyLines: true, dynamicTyping: true,
+      complete: r => resolve({ data: r.data, firstLine: lines[0] || '' })
     });
   });
 }
 
-function extractDate(raw) {
-  if (raw && raw[0] && raw[0][0]) {
-    const match = raw[0][0].match(/\((.+?)\)/);
-    return match ? match[1] : raw[0][0];
-  }
-  return '—';
-}
-
 async function init() {
   try {
-    const [baseResult, sisResult] = await Promise.all([
-      fetchCSV(BASELINE_URL, 0),
-      fetchCSV(SIS_URL, 2)
+    document.getElementById('ls-msg').textContent = 'Loading baseline data...';
+    const [baseText, curText, metaText] = await Promise.all([
+      fetch(BASELINE_URL).then(r => r.text()),
+      fetch(CURRENT_URL).then(r => r.text()),
+      fetch(META_URL).then(r => r.text()).catch(() => '')
     ]);
 
-    document.getElementById('sis-date').textContent = extractDate(sisResult.raw);
+    document.getElementById('ls-msg').textContent = 'Processing data...';
+
+    const baseResult = await parseCSV(baseText, 0);
+    const curResult  = await parseCSV(curText, 2);
+
+    // Date from first line of current.csv
+    const dateMatch = curResult.firstLine.match(/\((.+?)\)/);
+    document.getElementById('sis-date').textContent = dateMatch ? dateMatch[1] : 'Latest';
+    document.getElementById('last-updated').textContent = metaText.trim() || 'Today 6:00 AM';
 
     const sisMap = {};
-    sisResult.data.forEach(r => {
-      const emis = r['School EMIS']?.trim();
+    curResult.data.forEach(r => {
+      const emis = String(r['School EMIS'] || '').trim();
       if (emis) sisMap[emis] = r;
     });
 
     allData = baseResult.data.map(b => {
-      const emis = String(b.s_emis_code || '').trim();
-      const s = sisMap[emis] || {};
+      const emis  = String(b.s_emis_code || '').trim();
+      const s     = sisMap[emis] || {};
       const baseT = n(b['Total Baseline']);
-      const tgtB = n(b['New Enrolment Target (Boys)']);
-      const tgtG = n(b['New Enrolment Target (Girls)']);
-      const tgtT = tgtB + tgtG;
-      const enrT = n(s['Currrent Enrolled & Unverified']) || 0;
+      const tgtT  = n(b['New Enrolment Target (Boys)']) + n(b['New Enrolment Target (Girls)']);
+      const enrT  = n(s['Currrent Enrolled & Unverified']) || 0;
       return {
-        d_name: b.d_name || '', t_name: b.t_name || '', m_name: b.m_name || '',
+        d_name: b.d_name||'', t_name: b.t_name||'', m_name: b.m_name||'',
         s_emis_code: emis, s_name: b.s_name || s['School Name'] || '',
         s_level: b.s_level || s['School Level'] || '',
-        s_type: b.s_type || s['School Type'] || '',
-        s_area: b.s_area || '',
+        s_type:  b.s_type  || s['School Type']  || '',
+        s_area:  b.s_area  || '',
         baseT, tgtT, enrT, expT: baseT + tgtT
       };
     });
 
     populateFilters();
-    document.getElementById('ls').style.display = 'none';
+    document.getElementById('ls').style.display  = 'none';
     document.getElementById('app').style.display = 'block';
     render();
   } catch(e) {
-    document.getElementById('ls').innerHTML = `<div style="color:#991b1b;text-align:center;padding:24px"><h2>Failed to load data</h2><p style="margin-top:8px">${e.message}</p></div>`;
+    document.getElementById('ls').innerHTML = `
+      <div style="color:#991b1b;text-align:center;padding:32px;max-width:500px">
+        <h2 style="margin-bottom:8px">Failed to load data</h2>
+        <p style="font-size:13px">${e.message}</p>
+        <p style="font-size:12px;margin-top:12px;color:#6b7280">Make sure baseline.csv and current.csv exist in the /data folder of your repository.</p>
+      </div>`;
   }
 }
 
-function unique(key) {
-  return ['All', ...Array.from(new Set(allData.map(r => r[key]))).filter(Boolean).sort()];
+function uniq(key) {
+  return ['All',...Array.from(new Set(allData.map(r=>r[key]))).filter(Boolean).sort()];
 }
 
 function populateFilters() {
   const fill = (id, opts, onChange) => {
     const el = document.getElementById(id);
-    opts.slice(1).forEach(o => { const opt = document.createElement('option'); opt.value=o; opt.textContent=o; el.appendChild(opt); });
-    if (onChange) el.addEventListener('change', onChange);
-    else el.addEventListener('change', render);
+    opts.slice(1).forEach(o => { const opt=document.createElement('option'); opt.value=o; opt.textContent=o; el.appendChild(opt); });
+    el.addEventListener('change', onChange || render);
   };
-  fill('f-district', unique('d_name'), () => { resetCascade('f-tehsil','t_name'); resetCascade('f-markaz','m_name'); render(); });
-  fill('f-tehsil', unique('t_name'), () => { resetCascade('f-markaz','m_name'); render(); });
-  fill('f-markaz', unique('m_name'));
-  fill('f-level', unique('s_level'));
-  fill('f-type', unique('s_type'));
+  fill('f-district', uniq('d_name'), ()=>{ cascade('f-tehsil','t_name',null); cascade('f-markaz','m_name','t_name'); render(); });
+  fill('f-tehsil',   uniq('t_name'), ()=>{ cascade('f-markaz','m_name','t_name'); render(); });
+  fill('f-markaz',   uniq('m_name'));
+  fill('f-level',    uniq('s_level'));
+  fill('f-type',     uniq('s_type'));
   document.getElementById('f-area').addEventListener('change', render);
   document.getElementById('f-search').addEventListener('input', render);
 }
 
-function resetCascade(id, key) {
-  const el = document.getElementById(id);
+function cascade(id, key, parentKey) {
+  const el   = document.getElementById(id);
   const dist = document.getElementById('f-district').value;
-  const teh = document.getElementById('f-tehsil')?.value;
+  const teh  = document.getElementById('f-tehsil')?.value;
   el.innerHTML = '<option>All</option>';
   let pool = allData;
   if (dist !== 'All') pool = pool.filter(r => r.d_name === dist);
-  if (id === 'f-markaz' && teh && teh !== 'All') pool = pool.filter(r => r.t_name === teh);
-  [...new Set(pool.map(r => r[key]))].filter(Boolean).sort()
-    .forEach(o => { const opt = document.createElement('option'); opt.value=o; opt.textContent=o; el.appendChild(opt); });
+  if (parentKey === 't_name' && teh && teh !== 'All') pool = pool.filter(r => r.t_name === teh);
+  [...new Set(pool.map(r=>r[key]))].filter(Boolean).sort()
+    .forEach(o => { const opt=document.createElement('option'); opt.value=o; opt.textContent=o; el.appendChild(opt); });
 }
 
 function getFiltered() {
@@ -256,9 +235,9 @@ function getFiltered() {
   const ty=document.getElementById('f-type').value;
   const a=document.getElementById('f-area').value;
   const s=document.getElementById('f-search').value.toLowerCase();
-  return allData.filter(r =>
-    (d==='All'||r.d_name===d) && (t==='All'||r.t_name===t) && (m==='All'||r.m_name===m) &&
-    (l==='All'||r.s_level===l) && (ty==='All'||r.s_type===ty) && (a==='All'||r.s_area===a) &&
+  return allData.filter(r=>
+    (d==='All'||r.d_name===d)&&(t==='All'||r.t_name===t)&&(m==='All'||r.m_name===m)&&
+    (l==='All'||r.s_level===l)&&(ty==='All'||r.s_type===ty)&&(a==='All'||r.s_area===a)&&
     (!s||r.s_name?.toLowerCase().includes(s)||String(r.s_emis_code).includes(s))
   );
 }
@@ -266,26 +245,23 @@ function getFiltered() {
 function aggregate(data, keys) {
   const map = {};
   data.forEach(r => {
-    const k = keys.map(k => r[k]).join('||');
-    if (!k) return;
-    if (!map[k]) map[k] = { _keys: keys.reduce((o,key) => ({...o,[key]:r[key]}),{}), baseT:0, tgtT:0, enrT:0 };
-    map[k].baseT += r.baseT; map[k].tgtT += r.tgtT; map[k].enrT += r.enrT;
+    const k = keys.map(k=>r[k]).join('||');
+    if (!k||k.replace(/\|/g,'')==='') return;
+    if (!map[k]) map[k] = { ...keys.reduce((o,key)=>({...o,[key]:r[key]}),{}), baseT:0, tgtT:0, enrT:0 };
+    map[k].baseT+=r.baseT; map[k].tgtT+=r.tgtT; map[k].enrT+=r.enrT;
   });
-  return Object.values(map).map(r => ({
-    ...r._keys, baseT:r.baseT, tgtT:r.tgtT, enrT:r.enrT,
-    expT: r.baseT + r.tgtT,
-    pct: pct(r.enrT - r.baseT, r.tgtT)
-  })).sort((a,b) => b.pct - a.pct);
+  return Object.values(map).map(r=>({
+    ...r, expT:r.baseT+r.tgtT,
+    pct: pct(r.enrT-r.baseT, r.tgtT)
+  })).sort((a,b)=>b.pct-a.pct);
 }
 
-function tableRow(cells, p) {
-  return `<tr>${cells.map(c => `<td class="${c.cls||''}">${c.v}</td>`).join('')}<td>${bar(p)}</td><td class="tc">${bdg(p)}</td></tr>`;
+function row(cells, p) {
+  return `<tr>${cells.map(c=>`<td class="${c.cls||''}">${c.v}</td>`).join('')}<td>${bar(p)}</td><td class="tc">${bdg(p)}</td></tr>`;
 }
 
 function render() {
   const f = getFiltered();
-
-  // KPIs
   const baseT=f.reduce((s,r)=>s+r.baseT,0), tgtT=f.reduce((s,r)=>s+r.tgtT,0), enrT=f.reduce((s,r)=>s+r.enrT,0);
   const expT=baseT+tgtT, p=pct(enrT-baseT,tgtT);
   document.getElementById('k-baseT').textContent=fmt(baseT);
@@ -295,39 +271,35 @@ function render() {
   document.getElementById('k-pct').textContent=p.toFixed(1)+'%';
   document.getElementById('k-pct').style.color=bc(p);
 
-  // District
-  const distData = aggregate(f, ['d_name']);
-  document.getElementById('district-body').innerHTML = distData.map((r,i) => tableRow([
+  const distData = aggregate(f,['d_name']);
+  document.getElementById('district-body').innerHTML = distData.map((r,i)=>row([
     {v:i+1,cls:'rank'},{v:`<b>${r.d_name}</b>`},
     {v:fmt(r.baseT),cls:'tr'},{v:fmt(r.tgtT),cls:'tr'},
     {v:fmt(r.expT),cls:'tr ti'},{v:fmt(r.enrT),cls:'tr fb'},
     {v:`<b style="color:${bc(r.pct)}">${r.pct.toFixed(1)}%</b>`,cls:'tr'}
-  ], r.pct)).join('');
+  ],r.pct)).join('');
 
-  // Tehsil
-  const tehData = aggregate(f, ['d_name','t_name']);
-  document.getElementById('tehsil-body').innerHTML = tehData.map((r,i) => tableRow([
+  const tehData = aggregate(f,['d_name','t_name']);
+  document.getElementById('tehsil-body').innerHTML = tehData.map((r,i)=>row([
     {v:i+1,cls:'rank'},{v:`<b>${r.d_name}</b>`},{v:r.t_name},
     {v:fmt(r.baseT),cls:'tr'},{v:fmt(r.tgtT),cls:'tr'},
     {v:fmt(r.expT),cls:'tr ti'},{v:fmt(r.enrT),cls:'tr fb'},
     {v:`<b style="color:${bc(r.pct)}">${r.pct.toFixed(1)}%</b>`,cls:'tr'}
-  ], r.pct)).join('');
+  ],r.pct)).join('');
 
-  // Markaz
-  const mrkData = aggregate(f, ['d_name','t_name','m_name']);
-  document.getElementById('markaz-body').innerHTML = mrkData.map((r,i) => tableRow([
+  const mrkData = aggregate(f,['d_name','t_name','m_name']);
+  document.getElementById('markaz-body').innerHTML = mrkData.map((r,i)=>row([
     {v:i+1,cls:'rank'},{v:`<b>${r.d_name}</b>`},{v:r.t_name},{v:r.m_name},
     {v:fmt(r.baseT),cls:'tr'},{v:fmt(r.tgtT),cls:'tr'},
     {v:fmt(r.expT),cls:'tr ti'},{v:fmt(r.enrT),cls:'tr fb'},
     {v:`<b style="color:${bc(r.pct)}">${r.pct.toFixed(1)}%</b>`,cls:'tr'}
-  ], r.pct)).join('');
+  ],r.pct)).join('');
 
-  // Schools
   const shown = f.slice(0,300);
-  document.getElementById('school-count').textContent = `${f.length.toLocaleString()} schools`;
-  document.getElementById('school-note').textContent = f.length>300 ? `Showing first 300 of ${f.length.toLocaleString()} schools. Use filters to narrow down.` : '';
-  document.getElementById('school-body').innerHTML = shown.map(r => {
-    const p = pct(r.enrT - r.baseT, r.tgtT);
+  document.getElementById('school-count').textContent=`${f.length.toLocaleString()} schools`;
+  document.getElementById('school-note').textContent=f.length>300?`Showing first 300 of ${f.length.toLocaleString()} schools. Use filters to narrow down.`:'';
+  document.getElementById('school-body').innerHTML = shown.map(r=>{
+    const p=pct(r.enrT-r.baseT,r.tgtT);
     return `<tr>
       <td>${r.s_emis_code}</td>
       <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.s_name}</td>
@@ -341,16 +313,16 @@ function render() {
   }).join('');
 }
 
-function switchTab(tab, btn) {
-  ['overview','tehsil','markaz','schools'].forEach(t => {
-    document.getElementById('tab-'+t).style.display = t===tab?'block':'none';
+function switchTab(tab,btn) {
+  ['overview','tehsil','markaz','schools'].forEach(t=>{
+    document.getElementById('tab-'+t).style.display=t===tab?'block':'none';
   });
-  document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
 }
 
 function resetFilters() {
-  ['f-district','f-tehsil','f-markaz','f-level','f-type','f-area'].forEach(id => document.getElementById(id).selectedIndex=0);
+  ['f-district','f-tehsil','f-markaz','f-level','f-type','f-area'].forEach(id=>document.getElementById(id).selectedIndex=0);
   document.getElementById('f-search').value='';
   render();
 }
