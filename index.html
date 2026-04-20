@@ -116,10 +116,9 @@ tr:hover td{background:#f9fafb}
 </div>
 
 <script>
-const REPO = 'abuzar586/SED-Enrolment-Dashboard-2026-27';
-const BASELINE_URL = `https://raw.githubusercontent.com/${REPO}/main/data/baseline.csv`;
-const CURRENT_URL  = `https://raw.githubusercontent.com/${REPO}/main/data/current.csv`;
-const META_URL     = `https://raw.githubusercontent.com/${REPO}/main/data/last_updated.txt`;
+const SHEET_ID    = '1VcYEM8OdM8s3h5ZKKsGl-V5AVI9z18bRoj15lYF0oTQ';
+const BASELINE_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=baseline`;
+const CURRENT_URL  = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=current`;
 
 let allData = [];
 
@@ -144,10 +143,9 @@ function parseCSV(text, skipRows=0) {
 async function init() {
   try {
     document.getElementById('ls-msg').textContent = 'Loading baseline data...';
-    const [baseText, curText, metaText] = await Promise.all([
+    const [baseText, curText] = await Promise.all([
       fetch(BASELINE_URL).then(r => r.text()),
       fetch(CURRENT_URL).then(r => r.text()),
-      fetch(META_URL).then(r => r.text()).catch(() => '')
     ]);
 
     document.getElementById('ls-msg').textContent = 'Processing data...';
@@ -155,19 +153,19 @@ async function init() {
     const baseResult = await parseCSV(baseText, 0);
     const curResult  = await parseCSV(curText, 2);
 
-    // Date from first line of current.csv
+    // Extract date from SIS metadata row
     const dateMatch = curResult.firstLine.match(/\((.+?)\)/);
     document.getElementById('sis-date').textContent = dateMatch ? dateMatch[1] : 'Latest';
-    document.getElementById('last-updated').textContent = metaText.trim() || 'Today 6:00 AM';
+    document.getElementById('last-updated').textContent = new Date().toLocaleDateString('en-PK', {day:'numeric',month:'long',year:'numeric'});
 
     const sisMap = {};
     curResult.data.forEach(r => {
-      const emis = String(r['School EMIS'] || '').trim();
+      const emis = String(r['School EMIS'] || '').trim().replace(/\.0$/, '');
       if (emis) sisMap[emis] = r;
     });
 
     allData = baseResult.data.map(b => {
-      const emis  = String(b.s_emis_code || '').trim();
+      const emis  = String(b.s_emis_code || '').trim().replace(/\.0$/, '');
       const s     = sisMap[emis] || {};
       const baseT = n(b['Total Baseline']);
       const tgtT  = n(b['New Enrolment Target (Boys)']) + n(b['New Enrolment Target (Girls)']);
